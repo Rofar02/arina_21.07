@@ -10,8 +10,8 @@
    ШАГ 3 — "КАФЕ"
    Впиши свои данные ниже — только эти две строки нужно менять.
    ============================================================ */
-const CAFE_NAME    = "Название кафе";   // например: "Кофейня Луна"
-const CAFE_ADDRESS = "Адрес кафе";      // например: "пр. Мира, 5"
+const CAFE_NAME    = "Рафчик coffee";   // например: "Кофейня Луна"
+const CAFE_ADDRESS = "ул. Кирова 45а";      // например: "пр. Мира, 5"
 
 /* Остальной текст экрана — можно тоже поправить при желании */
 const CONFIG = {
@@ -23,12 +23,12 @@ const CONFIG = {
 
 <style>
   :root{
-    --bg1:#fff6ef;
-    --bg2:#ffe2d3;
-    --accent:#c97b5f;
-    --accent-dark:#a4506d;
-    --text:#5a3d2e;
-    --card-bg:#fffaf5;
+    --bg1:#fbf1e6;
+    --bg2:#e9d3b8;
+    --accent:#a9714a;
+    --accent-dark:#6f4423;
+    --text:#4a2f1d;
+    --card-bg:#fffaf3;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;height:100%;min-height:100vh;}
@@ -36,24 +36,20 @@ const CONFIG = {
     display:flex;
     align-items:center;
     justify-content:center;
-    background:linear-gradient(160deg,var(--bg1),var(--bg2));
+    background-image:linear-gradient(160deg,var(--bg1),var(--bg2)), url("кофейня/kofe_stolik_chashka_119666_1600x1200.jpg");
+    background-size:cover;
+    background-position:center;
+    background-repeat:no-repeat;
+    background-blend-mode:soft-light;
+    background-attachment:fixed;
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
     padding:24px;
     text-align:center;
     color:var(--text);
     position:relative;
-    overflow:hidden;
+    overflow-x:hidden;
+    overflow-y:auto;
   }
-  body::before,body::after{
-    content:"";
-    position:absolute;
-    border-radius:50%;
-    filter:blur(2px);
-    opacity:0.5;
-    background:radial-gradient(circle,#ffd7c2,transparent 70%);
-  }
-  body::before{width:280px;height:280px;top:-80px;left:-80px;}
-  body::after{width:320px;height:320px;bottom:-100px;right:-100px;}
 
   .card{
     position:relative;
@@ -88,7 +84,7 @@ const CONFIG = {
     font-weight:600;
   }
   .details{
-    background:#fff1e6;
+    background:#f3e4cf;
     border-radius:18px;
     padding:20px 18px;
     margin-bottom:22px;
