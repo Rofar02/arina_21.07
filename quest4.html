@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Я жду тебя ♥</title>
+
+<script>
+/* ============================================================
+   ШАГ 4 — "ТЕРМОЛЕНД" (финальный экран)
+   Впиши свои данные ниже — только эти две строки нужно менять.
+   ============================================================ */
+const PLACE_NAME    = "Название места";   // например: "Термоленд"
+const PLACE_ADDRESS = "Адрес места";      // например: "ул. Тёплая, 1"
+
+/* Остальной текст экрана — можно тоже поправить при желании */
+const CONFIG = {
+  TITLE: "Я жду тебя здесь",
+  CLOSING: "Дальше — никаких QR-кодов.\nТолько я, ты и остаток этого дня ♥"
+};
+</script>
+
+<style>
+  :root{
+    --bg1:#fff6ef;
+    --bg2:#ffe2d3;
+    --accent:#c97b5f;
+    --accent-dark:#a4506d;
+    --text:#5a3d2e;
+    --card-bg:#fffaf5;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;min-height:100vh;}
+  body{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:linear-gradient(160deg,var(--bg1),var(--bg2));
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    padding:24px;
+    text-align:center;
+    color:var(--text);
+    position:relative;
+    overflow:hidden;
+  }
+  body::before,body::after{
+    content:"";
+    position:absolute;
+    border-radius:50%;
+    filter:blur(2px);
+    opacity:0.55;
+    background:radial-gradient(circle,#ffd7c2,transparent 70%);
+  }
+  body::before{width:300px;height:300px;top:-90px;left:-90px;}
+  body::after{width:340px;height:340px;bottom:-110px;right:-110px;}
+
+  .card{
+    position:relative;
+    z-index:1;
+    max-width:480px;
+    width:100%;
+    background:var(--card-bg);
+    border-radius:28px;
+    padding:46px 28px;
+    box-shadow:0 20px 60px rgba(90,61,46,0.2);
+  }
+  .step{
+    font-size:14px;
+    letter-spacing:1px;
+    text-transform:uppercase;
+    color:var(--accent);
+    opacity:0.7;
+    margin-bottom:14px;
+    font-weight:600;
+  }
+  h1{
+    font-size:clamp(30px,7.5vw,40px);
+    line-height:1.25;
+    margin:0 0 26px;
+    font-weight:700;
+  }
+  .details{
+    background:#fff1e6;
+    border-radius:18px;
+    padding:22px 18px;
+    margin-bottom:28px;
+    text-align:left;
+  }
+  .details .row{
+    display:flex;
+    align-items:flex-start;
+    gap:12px;
+    font-size:clamp(18px,4.8vw,22px);
+    line-height:1.4;
+    font-weight:700;
+  }
+  .details .row + .row{margin-top:14px;}
+  .details .icon{font-size:24px;flex-shrink:0;}
+  .maps-link{
+    display:inline-block;
+    margin-top:6px;
+    font-size:16px;
+    color:var(--accent-dark);
+    text-decoration:underline;
+    font-weight:600;
+  }
+  .closing{
+    font-size:clamp(18px,4.8vw,21px);
+    line-height:1.6;
+    color:var(--accent-dark);
+    white-space:pre-line;
+    font-weight:700;
+  }
+  .heart{
+    font-size:40px;
+    margin-bottom:10px;
+    display:block;
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <span class="heart">♥</span>
+    <div class="step">Финал</div>
+    <h1 id="title"></h1>
+    <div class="details">
+      <div class="row">
+        <span class="icon">📍</span>
+        <div>
+          <div id="placeName"></div>
+          <div id="placeAddress"></div>
+          <a class="maps-link" id="mapsLink" href="#" target="_blank" rel="noopener">Показать на карте</a>
+        </div>
+      </div>
+    </div>
+    <div class="closing" id="closing"></div>
+  </div>
+
+<script>
+  document.getElementById("title").textContent = CONFIG.TITLE;
+  document.getElementById("placeName").textContent = PLACE_NAME;
+  document.getElementById("placeAddress").textContent = PLACE_ADDRESS;
+  document.getElementById("mapsLink").href =
+    "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(PLACE_NAME + " " + PLACE_ADDRESS);
+  document.getElementById("closing").textContent = CONFIG.CLOSING;
+</script>
+</body>
+</html>

@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Собери картинку ♥</title>
+
+<script>
+/* ============================================================
+   ШАГ 1 — "ПАЗЛ"
+   Положи фото рядом с этим файлом и впиши его имя ниже.
+   ============================================================ */
+const PHOTO_SRC     = "photo.webp";         // файл с фото рядом с quest1.html
+
+/* Данные сертификата на массаж — показывается после сборки пазла */
+const SALON_NAME    = "Название салона";   // например: "SPA Aura"
+const SALON_TIME    = "12:00";             // например: "12:00"
+const SALON_ADDRESS = "Адрес салона";      // например: "ул. Ленина, 10"
+
+/* Тексты экрана — можно поправить при желании */
+const CONFIG = {
+  TITLE: "Собери картинку",
+  SUBTITLE: "Перетаскивай кусочки в сетку — они сами встанут на ближайшее место",
+  WIN_TITLE: "Со сложностями на сегодня достаточно.\nСегодня у тебя будет релакс-день",
+  CERT_BADGE: "Сертификат на массаж",
+  CERT_MESSAGE_TEMPLATE: "Любимая, тебя ждут в {SALON_NAME}\nк {SALON_TIME}.",
+  CERT_HINT: "После массажа загляни к администратору — она передаст тебе кое-что ♥"
+};
+</script>
+
+<style>
+  :root{
+    --bg1:#fff6ef;
+    --bg2:#ffe2d3;
+    --accent:#c97b5f;
+    --accent-dark:#a4506d;
+    --text:#5a3d2e;
+    --card-bg:#fffaf5;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;min-height:100vh;}
+  body{
+    background:linear-gradient(160deg,var(--bg1),var(--bg2));
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    color:var(--text);
+    padding:20px 12px 40px;
+    text-align:center;
+  }
+  .step{
+    font-size:14px;
+    letter-spacing:1px;
+    text-transform:uppercase;
+    color:var(--accent);
+    opacity:0.7;
+    margin-bottom:8px;
+    font-weight:600;
+  }
+  h1{
+    font-size:clamp(26px,7vw,34px);
+    line-height:1.25;
+    margin:0 0 8px;
+    font-weight:700;
+  }
+  .subtitle{
+    font-size:clamp(15px,4vw,17px);
+    line-height:1.4;
+    color:var(--accent-dark);
+    opacity:0.85;
+    font-weight:600;
+    margin:0 0 20px;
+    max-width:420px;
+    margin-left:auto;
+    margin-right:auto;
+  }
+
+  #puzzleWrap{
+    position:relative;
+    max-width:440px;
+    margin:0 auto;
+  }
+
+  .board{
+    width:min(92vw,420px);
+    aspect-ratio:1/1;
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    grid-template-rows:repeat(4,1fr);
+    gap:4px;
+    margin:0 auto;
+    position:relative;
+    z-index:1;
+  }
+  .slot{
+    border-radius:10px;
+    background:rgba(255,255,255,0.55);
+    border:2px dashed rgba(169,80,109,0.35);
+  }
+  .tray-slot{
+    border-radius:10px;
+    background:rgba(255,255,255,0.35);
+    border:2px dashed rgba(201,123,95,0.28);
+  }
+
+  .traylabel{
+    font-size:14px;
+    font-weight:700;
+    color:var(--accent);
+    opacity:0.75;
+    text-transform:uppercase;
+    letter-spacing:1px;
+    margin:18px 0 8px;
+  }
+
+  #piecesLayer{
+    position:absolute;
+    inset:0;
+    z-index:2;
+    pointer-events:none;
+  }
+  .piece{
+    position:absolute;
+    border-radius:9px;
+    background-color:#f2d9c8;
+    overflow:hidden;
+    box-shadow:0 3px 8px rgba(90,61,46,0.25);
+    pointer-events:auto;
+    touch-action:none;
+    cursor:grab;
+    transition:left .18s ease, top .18s ease, width .18s ease, height .18s ease, box-shadow .18s ease, transform .18s ease;
+    will-change:left,top;
+  }
+  .piece.dragging{
+    transition:none;
+    box-shadow:0 14px 26px rgba(90,61,46,0.4);
+    z-index:5;
+    cursor:grabbing;
+  }
+  .piece.snap-pulse{
+    animation:snapPulse .35s ease;
+  }
+  @keyframes snapPulse{
+    0%{ transform:scale(1); }
+    45%{ transform:scale(1.08); box-shadow:0 0 0 6px rgba(201,123,95,0.35), 0 10px 20px rgba(90,61,46,0.3); }
+    100%{ transform:scale(1); }
+  }
+  #puzzleWrap.solved .traylabel,
+  #puzzleWrap.solved #trayBoard{
+    opacity:0;
+    height:0;
+    margin:0;
+    overflow:hidden;
+    pointer-events:none;
+    transition:opacity .4s ease, height .4s ease, margin .4s ease;
+  }
+
+  .cert{
+    max-width:440px;
+    margin:26px auto 0;
+    background:var(--card-bg);
+    border-radius:28px;
+    padding:36px 26px;
+    box-shadow:0 20px 60px rgba(90,61,46,0.18);
+    border:2px dashed rgba(201,123,95,0.45);
+    opacity:0;
+    transform:translateY(16px);
+    transition:opacity .6s ease, transform .6s ease;
+  }
+  .cert.show{
+    opacity:1;
+    transform:translateY(0);
+  }
+  .win-title{
+    font-size:clamp(20px,5.5vw,25px);
+    line-height:1.5;
+    font-weight:700;
+    color:var(--accent-dark);
+    white-space:pre-line;
+    margin:0 0 24px;
+  }
+  .badge{
+    display:inline-block;
+    font-size:13px;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    color:#fff;
+    background:linear-gradient(135deg,var(--accent),var(--accent-dark));
+    padding:6px 16px;
+    border-radius:20px;
+    margin-bottom:18px;
+    font-weight:700;
+  }
+  .cert-message{
+    font-size:clamp(19px,5.2vw,24px);
+    line-height:1.55;
+    margin:0 0 26px;
+    white-space:pre-line;
+    font-weight:600;
+  }
+  .details{
+    background:#fff1e6;
+    border-radius:18px;
+    padding:20px 18px;
+    margin-bottom:22px;
+    text-align:left;
+  }
+  .details .row{
+    display:flex;
+    align-items:flex-start;
+    gap:12px;
+    font-size:clamp(17px,4.6vw,20px);
+    line-height:1.4;
+    font-weight:600;
+  }
+  .details .row + .row{margin-top:14px;}
+  .details .icon{font-size:22px;flex-shrink:0;}
+  .maps-link{
+    display:inline-block;
+    margin-top:4px;
+    font-size:16px;
+    color:var(--accent-dark);
+    text-decoration:underline;
+    font-weight:600;
+  }
+  .hint{
+    font-size:clamp(16px,4.2vw,18px);
+    line-height:1.5;
+    color:var(--accent-dark);
+    opacity:0.85;
+    font-weight:600;
+    margin-top:6px;
+  }
+</style>
+</head>
+<body>
+  <div class="step">Шаг 1 из 4</div>
+  <h1 id="title"></h1>
+  <p class="subtitle" id="subtitle"></p>
+
+  <div id="puzzleWrap">
+    <div class="board" id="grid"></div>
+    <div class="traylabel">Кусочки</div>
+    <div class="board" id="trayBoard"></div>
+    <div id="piecesLayer"></div>
+  </div>
+
+  <div class="cert" id="cert">
+    <div class="win-title" id="winTitle"></div>
+    <div class="badge" id="certBadge"></div>
+    <div class="cert-message" id="certMessage"></div>
+    <div class="details">
+      <div class="row">
+        <span class="icon">🕐</span>
+        <span id="timeRow"></span>
+      </div>
+      <div class="row">
+        <span class="icon">📍</span>
+        <div>
+          <div id="addressRow"></div>
+          <a class="maps-link" id="mapsLink" href="#" target="_blank" rel="noopener">Показать на карте</a>
+        </div>
+      </div>
+    </div>
+    <div class="hint" id="hint"></div>
+  </div>
+
+<script>
+(function(){
+  "use strict";
+
+  document.getElementById("title").textContent = CONFIG.TITLE;
+  document.getElementById("subtitle").textContent = CONFIG.SUBTITLE;
+  document.getElementById("winTitle").textContent = CONFIG.WIN_TITLE;
+  document.getElementById("certBadge").textContent = CONFIG.CERT_BADGE;
+  document.getElementById("certMessage").textContent = CONFIG.CERT_MESSAGE_TEMPLATE
+    .replace("{SALON_NAME}", SALON_NAME)
+    .replace("{SALON_TIME}", SALON_TIME);
+  document.getElementById("timeRow").textContent = SALON_TIME;
+  document.getElementById("addressRow").textContent = SALON_NAME + ", " + SALON_ADDRESS;
+  document.getElementById("mapsLink").href =
+    "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(SALON_NAME + " " + SALON_ADDRESS);
+  document.getElementById("hint").textContent = CONFIG.CERT_HINT;
+
+  const N = 4;
+  const COUNT = N * N;
+  const SNAP_RADIUS_RATIO = 0.55;
+
+  const wrap = document.getElementById("puzzleWrap");
+  const gridEl = document.getElementById("grid");
+  const trayEl = document.getElementById("trayBoard");
+  const layer = document.getElementById("piecesLayer");
+  const certEl = document.getElementById("cert");
+
+  // ---- build slot placeholders ----
+  const gridSlotEls = [];
+  const traySlotEls = [];
+  for (let i = 0; i < COUNT; i++) {
+    const g = document.createElement("div");
+    g.className = "slot";
+    gridEl.appendChild(g);
+    gridSlotEls.push(g);
+
+    const t = document.createElement("div");
+    t.className = "tray-slot";
+    trayEl.appendChild(t);
+    traySlotEls.push(t);
+  }
+
+  // ---- state ----
+  // location per piece: {type:'grid'|'tray', index}
+  const pieces = []; // {id, el, location}
+  const gridOccupant = new Array(COUNT).fill(null); // slotIndex -> pieceId
+  const trayOccupant = new Array(COUNT).fill(null);
+
+  function shuffledIndices(n) {
+    const arr = Array.from({length: n}, (_, i) => i);
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  const PIECE_RES = 320; // разрешение канваса одного кусочка (px), для чёткости на телефоне
+  const FALLBACK_COLORS = ["#f6d9c4","#f2c9c9","#e9d1e8","#cfe0d9","#f7e2b8","#d9dff2","#f0c9d6","#d6ead6"];
+
+  function buildPieces() {
+    const traySlots = shuffledIndices(COUNT);
+    for (let id = 0; id < COUNT; id++) {
+      const el = document.createElement("div");
+      el.className = "piece";
+
+      const canvas = document.createElement("canvas");
+      canvas.width = PIECE_RES;
+      canvas.height = PIECE_RES;
+      canvas.style.width = "100%";
+      canvas.style.height = "100%";
+      canvas.style.display = "block";
+      el.appendChild(canvas);
+      layer.appendChild(el);
+
+      const traySlot = traySlots[id];
+      trayOccupant[traySlot] = id;
+      const piece = { id, el, canvas, location: { type: "tray", index: traySlot } };
+      pieces.push(piece);
+
+      el.addEventListener("pointerdown", (e) => onPointerDown(e, piece));
+    }
+  }
+
+  // ---- image slicing (canvas) ----
+  // Нарезаем фото на 16 равных фрагментов прямо в браузере: берём центральный
+  // квадрат исходного фото (чтобы не искажать пропорции), делим его на сетку
+  // 4x4 и для каждого кусочка через ctx.drawImage() копируем именно его
+  // область в собственный канвас — это и есть фрагмент-картинка кусочка.
+  let imgOk = false;
+
+  function sliceAllPieces(img) {
+    let sx0 = 0, sy0 = 0, side = 0;
+    if (imgOk) {
+      const iw = img.naturalWidth, ih = img.naturalHeight;
+      side = Math.min(iw, ih);
+      sx0 = (iw - side) / 2;
+      sy0 = (ih - side) / 2;
+    }
+    const cell = side / N;
+
+    pieces.forEach((p) => {
+      const ctx = p.canvas.getContext("2d");
+      const row = Math.floor(p.id / N);
+      const col = p.id % N;
+
+      if (imgOk) {
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
+        ctx.drawImage(
+          img,
+          sx0 + col * cell, sy0 + row * cell, cell, cell,
+          0, 0, PIECE_RES, PIECE_RES
+        );
+      } else {
+        ctx.fillStyle = FALLBACK_COLORS[p.id % FALLBACK_COLORS.length];
+        ctx.fillRect(0, 0, PIECE_RES, PIECE_RES);
+        ctx.fillStyle = "#a4506d";
+        ctx.font = "bold " + (PIECE_RES * 0.34) + "px sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(String(p.id + 1), PIECE_RES / 2, PIECE_RES / 2);
+      }
+    });
+  }
+
+  // ---- geometry helpers ----
+  function wrapRect() { return wrap.getBoundingClientRect(); }
+
+  function slotCenter(el) {
+    const r = el.getBoundingClientRect();
+    const w = wrapRect();
+    return {
+      x: r.left - w.left + r.width / 2,
+      y: r.top - w.top + r.height / 2,
+      size: r.width
+    };
+  }
+
+  function allSlots() {
+    const list = [];
+    gridSlotEls.forEach((el, i) => list.push({ type: "grid", index: i, el }));
+    traySlotEls.forEach((el, i) => list.push({ type: "tray", index: i, el }));
+    return list;
+  }
+
+  function renderPiece(piece, animate) {
+    const el = piece.el;
+    const slotEl = piece.location.type === "grid"
+      ? gridSlotEls[piece.location.index]
+      : traySlotEls[piece.location.index];
+    const r = slotEl.getBoundingClientRect();
+    const w = wrapRect();
+    if (!animate) el.style.transition = "none";
+    el.style.left = (r.left - w.left) + "px";
+    el.style.top = (r.top - w.top) + "px";
+    el.style.width = r.width + "px";
+    el.style.height = r.height + "px";
+    if (!animate) {
+      void el.offsetWidth; // flush
+      el.style.transition = "";
+    }
+  }
+
+  function renderAll(animate) {
+    pieces.forEach((p) => renderPiece(p, animate));
+  }
+
+  function layoutAll() {
+    renderAll(false);
+  }
+
+  // ---- drag logic ----
+  let dragCtx = null;
+
+  function onPointerDown(e, piece) {
+    if (wrap.classList.contains("solved")) return;
+    e.preventDefault();
+    const el = piece.el;
+    el.setPointerCapture(e.pointerId);
+    const startLeft = parseFloat(el.style.left) || 0;
+    const startTop = parseFloat(el.style.top) || 0;
+    dragCtx = {
+      piece,
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startY: e.clientY,
+      originLeft: startLeft,
+      originTop: startTop
+    };
+    el.classList.add("dragging");
+
+    el.addEventListener("pointermove", onPointerMove);
+    el.addEventListener("pointerup", onPointerUp);
+    el.addEventListener("pointercancel", onPointerUp);
+  }
+
+  function onPointerMove(e) {
+    if (!dragCtx || e.pointerId !== dragCtx.pointerId) return;
+    const dx = e.clientX - dragCtx.startX;
+    const dy = e.clientY - dragCtx.startY;
+    dragCtx.piece.el.style.left = (dragCtx.originLeft + dx) + "px";
+    dragCtx.piece.el.style.top = (dragCtx.originTop + dy) + "px";
+  }
+
+  function onPointerUp(e) {
+    if (!dragCtx || e.pointerId !== dragCtx.pointerId) return;
+    const { piece } = dragCtx;
+    const el = piece.el;
+    el.classList.remove("dragging");
+    el.removeEventListener("pointermove", onPointerMove);
+    el.removeEventListener("pointerup", onPointerUp);
+    el.removeEventListener("pointercancel", onPointerUp);
+
+    const size = el.getBoundingClientRect().width;
+    const curLeft = parseFloat(el.style.left) || 0;
+    const curTop = parseFloat(el.style.top) || 0;
+    const cx = curLeft + size / 2;
+    const cy = curTop + size / 2;
+
+    let best = null, bestDist = Infinity;
+    allSlots().forEach((s) => {
+      const c = slotCenter(s.el);
+      const d = Math.hypot(c.x - cx, c.y - cy);
+      if (d < bestDist) { bestDist = d; best = s; }
+    });
+
+    const radius = (best ? slotCenter(best.el).size : size) * SNAP_RADIUS_RATIO;
+
+    if (best && bestDist <= radius) {
+      placePiece(piece, best.type, best.index);
+    } else {
+      renderPiece(piece, true); // snap back
+    }
+
+    checkWin();
+    dragCtx = null;
+  }
+
+  function occupantArr(type) { return type === "grid" ? gridOccupant : trayOccupant; }
+  function pieceById(id) { return pieces.find((p) => p.id === id); }
+
+  function placePiece(piece, targetType, targetIndex) {
+    const fromType = piece.location.type;
+    const fromIndex = piece.location.index;
+
+    if (fromType === targetType && fromIndex === targetIndex) {
+      renderPiece(piece, true);
+      pulse(piece);
+      return;
+    }
+
+    const targetArr = occupantArr(targetType);
+    const occupantId = targetArr[targetIndex];
+
+    // clear old slot
+    occupantArr(fromType)[fromIndex] = null;
+
+    if (occupantId !== null && occupantId !== piece.id) {
+      // swap: move occupant to piece's old slot
+      const occupantPiece = pieceById(occupantId);
+      occupantPiece.location = { type: fromType, index: fromIndex };
+      occupantArr(fromType)[fromIndex] = occupantId;
+      renderPiece(occupantPiece, true);
+      pulse(occupantPiece);
+    }
+
+    piece.location = { type: targetType, index: targetIndex };
+    targetArr[targetIndex] = piece.id;
+    renderPiece(piece, true);
+    pulse(piece);
+  }
+
+  function pulse(piece) {
+    piece.el.classList.remove("snap-pulse");
+    void piece.el.offsetWidth;
+    piece.el.classList.add("snap-pulse");
+  }
+
+  function checkWin() {
+    for (let i = 0; i < COUNT; i++) {
+      if (gridOccupant[i] !== i) return;
+    }
+    wrap.classList.add("solved");
+    setTimeout(() => certEl.classList.add("show"), 250);
+  }
+
+  // ---- init ----
+  buildPieces();
+  renderAll(false);
+
+  const img = new Image();
+  img.onload = function () {
+    imgOk = true;
+    sliceAllPieces(img);
+  };
+  img.onerror = function () {
+    imgOk = false;
+    sliceAllPieces(img);
+  };
+  img.src = PHOTO_SRC;
+
+  let resizeTimer = null;
+  window.addEventListener("resize", () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(layoutAll, 120);
+  });
+  window.addEventListener("orientationchange", () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(layoutAll, 200);
+  });
+})();
+</script>
+</body>
+</html>

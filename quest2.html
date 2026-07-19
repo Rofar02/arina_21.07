@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Время для тебя ♥</title>
+
+<script>
+/* ============================================================
+   ШАГ 2 — "МАССАЖ"
+   Впиши свои данные ниже — только эти три строки нужно менять.
+   ============================================================ */
+const SALON_NAME    = "Название салона";   // например: "SPA Aura"
+const SALON_TIME    = "12:00";             // например: "12:00"
+const SALON_ADDRESS = "Адрес салона";      // например: "ул. Ленина, 10"
+
+/* Остальной текст экрана — можно тоже поправить при желании */
+const CONFIG = {
+  TITLE: "Пора расслабиться",
+  MESSAGE_TEMPLATE: "Любимая, тебя ждут в {SALON_NAME}\nк {SALON_TIME}.",
+  HINT: "После массажа загляни к администратору — она передаст тебе кое-что ♥"
+};
+</script>
+
+<style>
+  :root{
+    --bg1:#fff6ef;
+    --bg2:#ffe2d3;
+    --accent:#c97b5f;
+    --accent-dark:#a4506d;
+    --text:#5a3d2e;
+    --card-bg:#fffaf5;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;min-height:100vh;}
+  body{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:linear-gradient(160deg,var(--bg1),var(--bg2));
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    padding:24px;
+    text-align:center;
+    color:var(--text);
+    position:relative;
+    overflow:hidden;
+  }
+  body::before,body::after{
+    content:"";
+    position:absolute;
+    border-radius:50%;
+    filter:blur(2px);
+    opacity:0.5;
+    background:radial-gradient(circle,#ffd7c2,transparent 70%);
+  }
+  body::before{width:280px;height:280px;top:-80px;left:-80px;}
+  body::after{width:320px;height:320px;bottom:-100px;right:-100px;}
+
+  .card{
+    position:relative;
+    z-index:1;
+    max-width:480px;
+    width:100%;
+    background:var(--card-bg);
+    border-radius:28px;
+    padding:40px 26px;
+    box-shadow:0 20px 60px rgba(90,61,46,0.18);
+    border:2px dashed rgba(201,123,95,0.45);
+  }
+  .step{
+    font-size:14px;
+    letter-spacing:1px;
+    text-transform:uppercase;
+    color:var(--accent);
+    opacity:0.7;
+    margin-bottom:10px;
+    font-weight:600;
+  }
+  .badge{
+    display:inline-block;
+    font-size:13px;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    color:#fff;
+    background:linear-gradient(135deg,var(--accent),var(--accent-dark));
+    padding:6px 16px;
+    border-radius:20px;
+    margin-bottom:18px;
+    font-weight:700;
+  }
+  h1{
+    font-size:clamp(27px,7vw,36px);
+    line-height:1.25;
+    margin:0 0 18px;
+    font-weight:700;
+  }
+  p.message{
+    font-size:clamp(19px,5.2vw,24px);
+    line-height:1.55;
+    margin:0 0 26px;
+    white-space:pre-line;
+    font-weight:600;
+  }
+  .details{
+    background:#fff1e6;
+    border-radius:18px;
+    padding:20px 18px;
+    margin-bottom:22px;
+    text-align:left;
+  }
+  .details .row{
+    display:flex;
+    align-items:flex-start;
+    gap:12px;
+    font-size:clamp(17px,4.6vw,20px);
+    line-height:1.4;
+    font-weight:600;
+  }
+  .details .row + .row{margin-top:14px;}
+  .details .icon{font-size:22px;flex-shrink:0;}
+  .maps-link{
+    display:inline-block;
+    margin-top:4px;
+    font-size:16px;
+    color:var(--accent-dark);
+    text-decoration:underline;
+    font-weight:600;
+  }
+  .hint{
+    font-size:clamp(16px,4.2vw,18px);
+    line-height:1.5;
+    color:var(--accent-dark);
+    opacity:0.85;
+    font-weight:600;
+    margin-top:6px;
+  }
+  .heart{
+    font-size:34px;
+    margin-bottom:8px;
+    display:block;
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <span class="heart">♥</span>
+    <div class="step">Шаг 2 из 4</div>
+    <div class="badge">Сертификат на массаж</div>
+    <h1 id="title"></h1>
+    <p class="message" id="message"></p>
+    <div class="details">
+      <div class="row">
+        <span class="icon">🕐</span>
+        <span id="timeRow"></span>
+      </div>
+      <div class="row">
+        <span class="icon">📍</span>
+        <div>
+          <div id="addressRow"></div>
+          <a class="maps-link" id="mapsLink" href="#" target="_blank" rel="noopener">Показать на карте</a>
+        </div>
+      </div>
+    </div>
+    <div class="hint" id="hint"></div>
+  </div>
+
+<script>
+  document.getElementById("title").textContent = CONFIG.TITLE;
+  document.getElementById("message").textContent = CONFIG.MESSAGE_TEMPLATE
+    .replace("{SALON_NAME}", SALON_NAME)
+    .replace("{SALON_TIME}", SALON_TIME);
+  document.getElementById("timeRow").textContent = SALON_TIME;
+  document.getElementById("addressRow").textContent = SALON_NAME + ", " + SALON_ADDRESS;
+  document.getElementById("mapsLink").href =
+    "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(SALON_NAME + " " + SALON_ADDRESS);
+  document.getElementById("hint").textContent = CONFIG.HINT;
+</script>
+</body>
+</html>
