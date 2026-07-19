@@ -11,6 +11,8 @@
    Положи фото рядом с этим файлом и впиши его имя ниже.
    ============================================================ */
 const PHOTO_SRC     = "photo.webp";         // файл с фото рядом с quest1.html
+const PUZZLE_COLS   = 4;                    // столбцов в пазле
+const PUZZLE_ROWS   = 3;                    // строк в пазле (всего кусочков = COLS * ROWS)
 
 /* Данные сертификата на массаж — показывается после сборки пазла */
 const SALON_NAME    = "Название салона";   // например: "SPA Aura"
@@ -81,10 +83,10 @@ const CONFIG = {
 
   .board{
     width:min(92vw,420px);
-    aspect-ratio:1/1;
+    aspect-ratio:var(--cols) / var(--rows);
     display:grid;
-    grid-template-columns:repeat(4,1fr);
-    grid-template-rows:repeat(4,1fr);
+    grid-template-columns:repeat(var(--cols),1fr);
+    grid-template-rows:repeat(var(--rows),1fr);
     gap:4px;
     margin:0 auto;
     position:relative;
@@ -280,9 +282,13 @@ const CONFIG = {
     "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(SALON_NAME + " " + SALON_ADDRESS);
   document.getElementById("hint").textContent = CONFIG.CERT_HINT;
 
-  const N = 4;
-  const COUNT = N * N;
+  const COLS = PUZZLE_COLS;
+  const ROWS = PUZZLE_ROWS;
+  const COUNT = COLS * ROWS;
   const SNAP_RADIUS_RATIO = 0.55;
+
+  document.documentElement.style.setProperty("--cols", COLS);
+  document.documentElement.style.setProperty("--rows", ROWS);
 
   const wrap = document.getElementById("puzzleWrap");
   const gridEl = document.getElementById("grid");
@@ -348,26 +354,35 @@ const CONFIG = {
   }
 
   // ---- image slicing (canvas) ----
-  // Нарезаем фото на 16 равных фрагментов прямо в браузере: берём центральный
-  // квадрат исходного фото (чтобы не искажать пропорции), делим его на сетку
-  // 4x4 и для каждого кусочка через ctx.drawImage() копируем именно его
-  // область в собственный канвас — это и есть фрагмент-картинка кусочка.
+  // Нарезаем фото на COLS*ROWS равных фрагментов прямо в браузере: берём
+  // центральную область исходного фото с пропорциями COLS:ROWS (чтобы не
+  // искажать картинку), делим её на сетку и для каждого кусочка через
+  // ctx.drawImage() копируем именно его область в собственный канвас —
+  // это и есть фрагмент-картинка кусочка.
   let imgOk = false;
 
   function sliceAllPieces(img) {
-    let sx0 = 0, sy0 = 0, side = 0;
+    let sx0 = 0, sy0 = 0, cell = 0;
     if (imgOk) {
       const iw = img.naturalWidth, ih = img.naturalHeight;
-      side = Math.min(iw, ih);
-      sx0 = (iw - side) / 2;
-      sy0 = (ih - side) / 2;
+      const targetRatio = COLS / ROWS;
+      let cropW, cropH;
+      if (iw / ih > targetRatio) {
+        cropH = ih;
+        cropW = ih * targetRatio;
+      } else {
+        cropW = iw;
+        cropH = iw / targetRatio;
+      }
+      sx0 = (iw - cropW) / 2;
+      sy0 = (ih - cropH) / 2;
+      cell = cropW / COLS; // = cropH / ROWS, кусочки всегда квадратные
     }
-    const cell = side / N;
 
     pieces.forEach((p) => {
       const ctx = p.canvas.getContext("2d");
-      const row = Math.floor(p.id / N);
-      const col = p.id % N;
+      const row = Math.floor(p.id / COLS);
+      const col = p.id % COLS;
 
       if (imgOk) {
         ctx.imageSmoothingEnabled = true;
