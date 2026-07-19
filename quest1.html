@@ -83,11 +83,10 @@ const CONFIG = {
 
   .board{
     width:min(92vw,420px);
-    aspect-ratio:var(--cols) / var(--rows);
+    aspect-ratio:var(--board-ratio);
     display:grid;
     grid-template-columns:repeat(var(--cols),1fr);
     grid-template-rows:repeat(var(--rows),1fr);
-    gap:4px;
     margin:0 auto;
     position:relative;
     z-index:1;
@@ -128,7 +127,7 @@ const CONFIG = {
     pointer-events:auto;
     touch-action:none;
     cursor:grab;
-    transition:left .18s ease, top .18s ease, width .18s ease, height .18s ease, box-shadow .18s ease, transform .18s ease;
+    transition:left .18s ease, top .18s ease, width .18s ease, height .18s ease, box-shadow .18s ease, transform .18s ease, border-radius .18s ease;
     will-change:left,top;
   }
   .piece.dragging{
@@ -153,6 +152,10 @@ const CONFIG = {
     overflow:hidden;
     pointer-events:none;
     transition:opacity .4s ease, height .4s ease, margin .4s ease;
+  }
+  #puzzleWrap.solved .piece{
+    border-radius:0;
+    box-shadow:none;
   }
 
   .cert{
@@ -289,6 +292,7 @@ const CONFIG = {
 
   document.documentElement.style.setProperty("--cols", COLS);
   document.documentElement.style.setProperty("--rows", ROWS);
+  document.documentElement.style.setProperty("--board-ratio", COLS + " / " + ROWS);
 
   const wrap = document.getElementById("puzzleWrap");
   const gridEl = document.getElementById("grid");
@@ -354,30 +358,26 @@ const CONFIG = {
   }
 
   // ---- image slicing (canvas) ----
-  // Нарезаем фото на COLS*ROWS равных фрагментов прямо в браузере: берём
-  // центральную область исходного фото с пропорциями COLS:ROWS (чтобы не
-  // искажать картинку), делим её на сетку и для каждого кусочка через
-  // ctx.drawImage() копируем именно его область в собственный канвас —
-  // это и есть фрагмент-картинка кусочка.
+  // Нарезаем ВСЁ фото на COLS*ROWS фрагментов — без обрезки по центру.
+  // Форму доски (aspect-ratio) подгоняем под реальные пропорции фото,
+  // поэтому в сумме кусочки покрывают 100% исходного изображения; если
+  // пропорции фото не равны COLS:ROWS, кусочки выйдут прямоугольными,
+  // а не квадратными — это нормально, зато ничего не обрезается.
   let imgOk = false;
 
   function sliceAllPieces(img) {
-    let sx0 = 0, sy0 = 0, cell = 0;
+    const iw = imgOk ? img.naturalWidth : COLS;
+    const ih = imgOk ? img.naturalHeight : ROWS;
+
     if (imgOk) {
-      const iw = img.naturalWidth, ih = img.naturalHeight;
-      const targetRatio = COLS / ROWS;
-      let cropW, cropH;
-      if (iw / ih > targetRatio) {
-        cropH = ih;
-        cropW = ih * targetRatio;
-      } else {
-        cropW = iw;
-        cropH = iw / targetRatio;
-      }
-      sx0 = (iw - cropW) / 2;
-      sy0 = (ih - cropH) / 2;
-      cell = cropW / COLS; // = cropH / ROWS, кусочки всегда квадратные
+      document.documentElement.style.setProperty("--board-ratio", iw + " / " + ih);
     }
+
+    const cellW = iw / COLS;
+    const cellH = ih / ROWS;
+    const scale = PIECE_RES / Math.max(cellW, cellH);
+    const canvasW = Math.max(1, Math.round(cellW * scale));
+    const canvasH = Math.max(1, Math.round(cellH * scale));
 
     pieces.forEach((p) => {
       const ctx = p.canvas.getContext("2d");
@@ -385,14 +385,18 @@ const CONFIG = {
       const col = p.id % COLS;
 
       if (imgOk) {
+        p.canvas.width = canvasW;
+        p.canvas.height = canvasH;
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = "high";
         ctx.drawImage(
           img,
-          sx0 + col * cell, sy0 + row * cell, cell, cell,
-          0, 0, PIECE_RES, PIECE_RES
+          col * cellW, row * cellH, cellW, cellH,
+          0, 0, canvasW, canvasH
         );
       } else {
+        p.canvas.width = PIECE_RES;
+        p.canvas.height = PIECE_RES;
         ctx.fillStyle = FALLBACK_COLORS[p.id % FALLBACK_COLORS.length];
         ctx.fillRect(0, 0, PIECE_RES, PIECE_RES);
         ctx.fillStyle = "#a4506d";
@@ -402,38 +406,52 @@ const CONFIG = {
         ctx.fillText(String(p.id + 1), PIECE_RES / 2, PIECE_RES / 2);
       }
     });
+
+    renderAll(false); // форма доски могла измениться — пересчитать позиции
   }
 
   // ---- geometry helpers ----
+  // Позиции кусочков считаем не по rect каждой отдельной ячейки CSS-грида
+  // (там из-за долевого деления 1fr бывает субпиксельное расхождение между
+  // соседними ячейками — отсюда и «пропущенная линия» на стыке), а от
+  // единого прямоугольника всей доски, поделённого поровну на COLS/ROWS.
+  // Так все кусочки стыкуются идеально, без зазоров и разрывов.
   function wrapRect() { return wrap.getBoundingClientRect(); }
 
-  function slotCenter(el) {
-    const r = el.getBoundingClientRect();
+  function slotBox(type, index) {
+    const boardEl = type === "grid" ? gridEl : trayEl;
+    const r = boardEl.getBoundingClientRect();
     const w = wrapRect();
+    const cellW = r.width / COLS;
+    const cellH = r.height / ROWS;
+    const row = Math.floor(index / COLS);
+    const col = index % COLS;
     return {
-      x: r.left - w.left + r.width / 2,
-      y: r.top - w.top + r.height / 2,
-      size: r.width
+      left: (r.left - w.left) + col * cellW,
+      top: (r.top - w.top) + row * cellH,
+      width: cellW,
+      height: cellH
     };
+  }
+
+  function slotCenter(type, index) {
+    const b = slotBox(type, index);
+    return { x: b.left + b.width / 2, y: b.top + b.height / 2, size: b.width };
   }
 
   function allSlots() {
     const list = [];
-    gridSlotEls.forEach((el, i) => list.push({ type: "grid", index: i, el }));
-    traySlotEls.forEach((el, i) => list.push({ type: "tray", index: i, el }));
+    for (let i = 0; i < COUNT; i++) list.push({ type: "grid", index: i });
+    for (let i = 0; i < COUNT; i++) list.push({ type: "tray", index: i });
     return list;
   }
 
   function renderPiece(piece, animate) {
     const el = piece.el;
-    const slotEl = piece.location.type === "grid"
-      ? gridSlotEls[piece.location.index]
-      : traySlotEls[piece.location.index];
-    const r = slotEl.getBoundingClientRect();
-    const w = wrapRect();
+    const r = slotBox(piece.location.type, piece.location.index);
     if (!animate) el.style.transition = "none";
-    el.style.left = (r.left - w.left) + "px";
-    el.style.top = (r.top - w.top) + "px";
+    el.style.left = r.left + "px";
+    el.style.top = r.top + "px";
     el.style.width = r.width + "px";
     el.style.height = r.height + "px";
     if (!animate) {
@@ -500,12 +518,12 @@ const CONFIG = {
 
     let best = null, bestDist = Infinity;
     allSlots().forEach((s) => {
-      const c = slotCenter(s.el);
+      const c = slotCenter(s.type, s.index);
       const d = Math.hypot(c.x - cx, c.y - cy);
       if (d < bestDist) { bestDist = d; best = s; }
     });
 
-    const radius = (best ? slotCenter(best.el).size : size) * SNAP_RADIUS_RATIO;
+    const radius = (best ? slotCenter(best.type, best.index).size : size) * SNAP_RADIUS_RATIO;
 
     if (best && bestDist <= radius) {
       placePiece(piece, best.type, best.index);
