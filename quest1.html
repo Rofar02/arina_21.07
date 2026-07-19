@@ -23,6 +23,7 @@ const SALON_ADDRESS = "Адрес салона";      // например: "ул
 const CONFIG = {
   TITLE: "Собери картинку",
   SUBTITLE: "Перетаскивай кусочки в сетку — они сами встанут на ближайшее место",
+  WIN_CONGRATS: "Умница! Ты справилась ♥",
   WIN_TITLE: "Со сложностями на сегодня достаточно.\nСегодня у тебя будет релакс-день",
   CERT_BADGE: "Сертификат на массаж",
   CERT_MESSAGE_TEMPLATE: "Любимая, тебя ждут в {SALON_NAME}\nк {SALON_TIME}.",
@@ -96,7 +97,19 @@ const CONFIG = {
     background:rgba(255,255,255,0.55);
     border:2px dashed rgba(169,80,109,0.35);
   }
+
+  .tray-strip{
+    width:min(92vw,420px);
+    margin:0 auto;
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+    position:relative;
+    z-index:1;
+  }
   .tray-slot{
+    flex:0 0 calc((100% - (var(--tray-cols) - 1) * 6px) / var(--tray-cols));
+    aspect-ratio:1/1;
     border-radius:10px;
     background:rgba(255,255,255,0.35);
     border:2px dashed rgba(201,123,95,0.28);
@@ -174,6 +187,24 @@ const CONFIG = {
     opacity:1;
     transform:translateY(0);
   }
+  .congrats-heart{
+    display:block;
+    font-size:44px;
+    margin-bottom:6px;
+    animation:congratsPop .6s ease;
+  }
+  .congrats{
+    font-size:clamp(24px,6.5vw,30px);
+    line-height:1.35;
+    font-weight:800;
+    color:var(--accent-dark);
+    margin:0 0 14px;
+  }
+  @keyframes congratsPop{
+    0%{ transform:scale(0.4) rotate(-8deg); opacity:0; }
+    60%{ transform:scale(1.15) rotate(4deg); opacity:1; }
+    100%{ transform:scale(1) rotate(0deg); opacity:1; }
+  }
   .win-title{
     font-size:clamp(20px,5.5vw,25px);
     line-height:1.5;
@@ -244,11 +275,13 @@ const CONFIG = {
   <div id="puzzleWrap">
     <div class="board" id="grid"></div>
     <div class="traylabel">Кусочки</div>
-    <div class="board" id="trayBoard"></div>
+    <div class="tray-strip" id="trayBoard"></div>
     <div id="piecesLayer"></div>
   </div>
 
   <div class="cert" id="cert">
+    <span class="congrats-heart">🎉</span>
+    <div class="congrats" id="congrats"></div>
     <div class="win-title" id="winTitle"></div>
     <div class="badge" id="certBadge"></div>
     <div class="cert-message" id="certMessage"></div>
@@ -274,6 +307,7 @@ const CONFIG = {
 
   document.getElementById("title").textContent = CONFIG.TITLE;
   document.getElementById("subtitle").textContent = CONFIG.SUBTITLE;
+  document.getElementById("congrats").textContent = CONFIG.WIN_CONGRATS;
   document.getElementById("winTitle").textContent = CONFIG.WIN_TITLE;
   document.getElementById("certBadge").textContent = CONFIG.CERT_BADGE;
   document.getElementById("certMessage").textContent = CONFIG.CERT_MESSAGE_TEMPLATE
@@ -290,9 +324,17 @@ const CONFIG = {
   const COUNT = COLS * ROWS;
   const SNAP_RADIUS_RATIO = 0.55;
 
+  // Раскладка лотка с кусочками — сама по себе, отдельно от формы пазла,
+  // максимально широкая и низкая, чтобы вместе с сеткой помещаться на
+  // экране телефона без прокрутки.
+  const TRAY_COLS = Math.min(COUNT, Math.max(3, Math.ceil(Math.sqrt(COUNT * 2.2))));
+
   document.documentElement.style.setProperty("--cols", COLS);
   document.documentElement.style.setProperty("--rows", ROWS);
   document.documentElement.style.setProperty("--board-ratio", COLS + " / " + ROWS);
+  document.documentElement.style.setProperty("--tray-cols", TRAY_COLS);
+
+  let boardRatio = COLS / ROWS;
 
   const wrap = document.getElementById("puzzleWrap");
   const gridEl = document.getElementById("grid");
@@ -370,7 +412,9 @@ const CONFIG = {
     const ih = imgOk ? img.naturalHeight : ROWS;
 
     if (imgOk) {
+      boardRatio = iw / ih;
       document.documentElement.style.setProperty("--board-ratio", iw + " / " + ih);
+      sizeGrid();
     }
 
     const cellW = iw / COLS;
@@ -410,27 +454,49 @@ const CONFIG = {
     renderAll(false); // форма доски могла измениться — пересчитать позиции
   }
 
+  // ---- board sizing ----
+  // Явно считаем размер сетки в пикселях (а не только через CSS aspect-ratio),
+  // чтобы для высоких/портретных фото пазл не растягивался выше экрана —
+  // так сетка и лоток с кусочками гарантированно помещаются на телефоне.
+  function sizeGrid() {
+    const maxW = Math.min(window.innerWidth * 0.92, 420);
+    const maxH = window.innerHeight * 0.42;
+    let w = maxW, h = w / boardRatio;
+    if (h > maxH) { h = maxH; w = h * boardRatio; }
+    gridEl.style.width = w + "px";
+    gridEl.style.height = h + "px";
+  }
+
   // ---- geometry helpers ----
-  // Позиции кусочков считаем не по rect каждой отдельной ячейки CSS-грида
-  // (там из-за долевого деления 1fr бывает субпиксельное расхождение между
-  // соседними ячейками — отсюда и «пропущенная линия» на стыке), а от
-  // единого прямоугольника всей доски, поделённого поровну на COLS/ROWS.
-  // Так все кусочки стыкуются идеально, без зазоров и разрывов.
+  // Позиции кусочков сетки считаем не по rect каждой отдельной ячейки
+  // CSS-грида (там из-за долевого деления 1fr бывает субпиксельное
+  // расхождение между соседними ячейками — отсюда и «пропущенная линия»
+  // на стыке), а от единого прямоугольника всей доски, поделённого поровну
+  // на COLS/ROWS. Так все кусочки стыкуются идеально, без зазоров и разрывов.
+  // Лоток — обычная flex-обёртка, там берём rect каждого слота напрямую.
   function wrapRect() { return wrap.getBoundingClientRect(); }
 
   function slotBox(type, index) {
-    const boardEl = type === "grid" ? gridEl : trayEl;
-    const r = boardEl.getBoundingClientRect();
     const w = wrapRect();
-    const cellW = r.width / COLS;
-    const cellH = r.height / ROWS;
-    const row = Math.floor(index / COLS);
-    const col = index % COLS;
+    if (type === "grid") {
+      const r = gridEl.getBoundingClientRect();
+      const cellW = r.width / COLS;
+      const cellH = r.height / ROWS;
+      const row = Math.floor(index / COLS);
+      const col = index % COLS;
+      return {
+        left: (r.left - w.left) + col * cellW,
+        top: (r.top - w.top) + row * cellH,
+        width: cellW,
+        height: cellH
+      };
+    }
+    const r = traySlotEls[index].getBoundingClientRect();
     return {
-      left: (r.left - w.left) + col * cellW,
-      top: (r.top - w.top) + row * cellH,
-      width: cellW,
-      height: cellH
+      left: r.left - w.left,
+      top: r.top - w.top,
+      width: r.width,
+      height: r.height
     };
   }
 
@@ -465,6 +531,7 @@ const CONFIG = {
   }
 
   function layoutAll() {
+    sizeGrid();
     renderAll(false);
   }
 
@@ -585,6 +652,7 @@ const CONFIG = {
 
   // ---- init ----
   buildPieces();
+  sizeGrid();
   renderAll(false);
 
   const img = new Image();
