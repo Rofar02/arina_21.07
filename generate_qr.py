@@ -24,25 +24,25 @@ from PIL import Image, ImageDraw
 PAGES = {
     "start": {
         "label": "Начало — Поздравление",
-        "url": "ССЫЛКА_НА_START",
+        "url": "http://5.129.202.42/start.html",
         "bg": "#fff5f7",     # светло-розовый
         "ring": "#a84568",   # тёмно-розовый
     },
     "quest2": {
         "label": "Шаг 2 — Массаж",
-        "url": "ССЫЛКА_НА_QUEST2",
+        "url": "http://5.129.202.42/quest2.html",
         "bg": "#fff1e6",     # тёплый персик
         "ring": "#a4506d",   # тёплая марсала
     },
     "quest3": {
         "label": "Шаг 3 — Кафе",
-        "url": "ССЫЛКА_НА_QUEST3",
+        "url": "http://5.129.202.42/quest3.html",
         "bg": "#f3e4cf",     # тёплый крем
         "ring": "#6f4423",   # эспрессо
     },
     "quest4": {
         "label": "Шаг 4 — Термоленд",
-        "url": "ССЫЛКА_НА_QUEST4",
+        "url": "http://5.129.202.42/quest4.html",
         "bg": "#dff2f3",     # ледяная бирюза
         "ring": "#1c6e77",   # глубокая бирюза
     },
